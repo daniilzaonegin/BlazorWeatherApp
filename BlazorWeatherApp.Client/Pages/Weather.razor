@@ -1,0 +1,63 @@
+﻿@page "/weather"
+@using BlazorWeatherApp.Shared
+@implements IDisposable
+@rendermode InteractiveWebAssembly
+@inject IWeatherService WeatherService
+@inject PersistentComponentState ApplicationState
+
+<h3>Weather</h3>
+@if (_weatherForecasts == null)
+{
+    <div>Loading...</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Temp. (C)</th>
+            <th>Temp. (F)</th>
+            <th>Summary</th>
+        </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _weatherForecasts)
+            {
+                <tr>
+                    <td>@row.Date</td>
+                    <td>@row.TemperatureC</td>
+                    <td>@row.TemperatureF</td>
+                    <td>@row.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    private WeatherForecast[]? _weatherForecasts;
+    private PersistingComponentStateSubscription _subscription;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = ApplicationState.RegisterOnPersisting(Persist);
+
+        var foundInState = 
+            ApplicationState.TryTakeFromJson<WeatherForecast[]>("weather", out var forecasts);
+
+        _weatherForecasts = foundInState 
+            ? forecasts
+            : await WeatherService.GetWeatherForecastsAsync();
+    }
+
+    private Task Persist()
+    {
+       ApplicationState.PersistAsJson("weather", _weatherForecasts);
+       return Task.CompletedTask;
+    }
+
+    public void Dispose() 
+    {
+        _subscription.Dispose();
+    }
+}
